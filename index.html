@@ -1,111 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Garou Destroy Game</title>
-<style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garou Tiles Game</title>
+  <style>
     body {
-        overflow: hidden;
-        height: 100vh;
-        background: url('grass.png') no-repeat center/cover; /* background image */
-        font-family: 'Arial';
-        color: white;
-        cursor: crosshair;
+      margin: 0;
+      overflow: hidden;
+      background: url('grass.png') no-repeat center/cover;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      color: white;
+      text-align: center;
+      user-select: none;
     }
 
-    .garou {
-        position: absolute;
-        top: -250px;
-        width: 250px;   /* 🔥 Bigger Garou */
-        height: 250px;
-        background: url('garou.png') no-repeat center/contain;
-        animation: fall linear;
+    h1 {
+      margin-top: 10px;
+      font-size: 28px;
+      text-shadow: 2px 2px 5px black;
     }
 
-    @keyframes fall {
-        0% { top: -250px; opacity: 1; }
-        100% { top: 100vh; opacity: 0.8; }
+    #topBar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      margin-top: 10px;
     }
 
     #score {
-        position: fixed;
-        top: 15px;
-        left: 15px;
-        font-size: 26px;
-        background: rgba(0,0,0,0.5);
-        padding: 8px 15px;
-        border-radius: 10px;
+      font-size: 24px;
     }
 
-    #gameover {
-        display: none;
-        position: absolute;
-        top: 40%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 40px;
-        color: #fff;
-        text-align: center;
-        background: rgba(0,0,0,0.6);
-        padding: 20px 40px;
-        border-radius: 15px;
+    #hearts {
+      font-size: 24px;
+      color: red;
+      text-shadow: 2px 2px 5px black;
     }
-</style>
+
+    #game {
+      position: relative;
+      width: 900px;
+      height: 600px;
+      margin: 20px auto;
+      border: 3px solid white;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .lane {
+      position: relative;
+      width: 100px;
+      height: 100%;
+      border-left: 1px solid rgba(255,255,255,0.2);
+      border-right: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .garou {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      background: url('garou.png') no-repeat center/contain;
+      top: -100px;
+    }
+
+    #speedControl {
+      margin-top: 5px;
+      font-size: 18px;
+    }
+
+    #gameOver {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 30px 50px;
+      border-radius: 15px;
+      font-size: 32px;
+      color: red;
+      text-shadow: 2px 2px 8px black;
+    }
+  </style>
 </head>
 <body>
+  <h1>🎮 Garou Tiles Game 🎹</h1>
+  <div id="topBar">
+    <div id="score">Score: 0</div>
+    <div id="hearts">❤️❤️❤️❤️❤️</div>
+  </div>
+  <div id="speedControl">
+    Speed: <input type="range" id="speedSlider" min="2" max="10" step="0.5" value="5">
+  </div>
+  <div id="game"></div>
+  <div id="gameOver">💀 Game Over! Press F5 to restart 💀</div>
 
-<div id="score">Kills: 0</div>
-<div id="gameover">🎮 Game Over!<br>Refresh to Play Again</div>
+  <script>
+    const game = document.getElementById("game");
+    const scoreDisplay = document.getElementById("score");
+    const heartsDisplay = document.getElementById("hearts");
+    const speedSlider = document.getElementById("speedSlider");
+    const gameOverScreen = document.getElementById("gameOver");
 
-<script>
-let kills = 0;
-let missed = 0;
-let gameOver = false;
-const scoreDisplay = document.getElementById("score");
-const gameOverText = document.getElementById("gameover");
+    let score = 0;
+    let speed = 5;
+    let hearts = 5;
+    let gameActive = true;
 
-// Create Garou enemy
-function createGarou() {
-    if (gameOver) return;
+    // Create 9 lanes
+    for (let i = 0; i < 9; i++) {
+      const lane = document.createElement("div");
+      lane.classList.add("lane");
+      game.appendChild(lane);
+    }
 
-    const garou = document.createElement("div");
-    garou.classList.add("garou");
-    garou.style.left = Math.random() * (window.innerWidth - 250) + "px";
-    document.body.appendChild(garou);
+    const lanes = document.querySelectorAll(".lane");
 
-    let topPos = -250;
-    const speed = 1.8 + Math.random() * 1.2; // slower falling speed
-    const fallInterval = setInterval(() => {
-        if (gameOver) { clearInterval(fallInterval); garou.remove(); return; }
-        topPos += speed;
-        garou.style.top = topPos + "px";
+    // Spawn Garou
+    function spawnGarou() {
+      if (!gameActive) return;
 
-        if (topPos > window.innerHeight - 10) {
-            clearInterval(fallInterval);
-            garou.remove();
-            missed++;
-            if (missed >= 5) {
-                gameOver = true;
-                gameOverText.style.display = "block";
-            }
+      const laneIndex = Math.floor(Math.random() * 9);
+      const garou = document.createElement("div");
+      garou.classList.add("garou");
+      lanes[laneIndex].appendChild(garou);
+
+      let pos = -100;
+      const fallSpeed = speed;
+      const fallInterval = setInterval(() => {
+        if (!gameActive) {
+          garou.remove();
+          clearInterval(fallInterval);
+          return;
         }
-    }, 25);
 
-    // Click to destroy
-    garou.addEventListener("click", () => {
-        clearInterval(fallInterval);
-        garou.remove();
-        kills++;
-        scoreDisplay.innerText = "Kills: " + kills;
+        pos += fallSpeed;
+        garou.style.top = pos + "px";
+
+        // Garou hits bottom
+        if (pos > 520) {
+          clearInterval(fallInterval);
+          garou.remove();
+          loseHeart();
+        }
+      }, 30);
+    }
+
+    // Lose one heart
+    function loseHeart() {
+      if (!gameActive) return;
+      hearts--;
+      updateHearts();
+      if (hearts <= 0) {
+        endGame();
+      }
+    }
+
+    // Update heart display
+    function updateHearts() {
+      heartsDisplay.innerHTML = "❤️".repeat(hearts);
+    }
+
+    // End game
+    function endGame() {
+      gameActive = false;
+      gameOverScreen.style.display = "block";
+    }
+
+    // Handle key presses 1–9
+    document.addEventListener("keydown", (e) => {
+      if (!gameActive) return;
+      const key = parseInt(e.key);
+      if (key >= 1 && key <= 9) {
+        const lane = lanes[key - 1];
+        const garou = lane.querySelector(".garou");
+        if (garou) {
+          garou.remove();
+          score++;
+          scoreDisplay.textContent = "Score: " + score;
+        }
+      }
     });
-}
 
-// 🕐 Spawn slowly (every 2.5 seconds)
-setInterval(createGarou, 2500);
-</script>
+    // Adjust speed
+    speedSlider.addEventListener("input", () => {
+      speed = parseFloat(speedSlider.value);
+    });
 
+    // Spawn repeatedly
+    const spawner = setInterval(() => {
+      if (gameActive) spawnGarou();
+    }, 500); // smaller = faster spawn
+  </script>
 </body>
 </html>
-
